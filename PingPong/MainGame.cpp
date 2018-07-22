@@ -508,10 +508,10 @@ float * MainGame::receiveData(sf::TcpSocket& soc) { // Utility Function to Recei
 
 void MainGame::sendData(sf::TcpSocket & soc, const std::string & data) { // Utility Function to Send Data; 
 
-	char sdata[50];
+	char sdata[40];
 	strcpy(sdata, data.c_str());
 
-	if (soc.send(sdata, 50) != sf::Socket::Done) {
+	if (soc.send(sdata, 40) != sf::Socket::Done) {
 		std::cout << "Error Sending Data" << std::endl;
 		soc.disconnect();
 	}
