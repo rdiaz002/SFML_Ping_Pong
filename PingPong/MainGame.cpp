@@ -67,8 +67,8 @@ void MainGame::startScreenLoop() {
 
 		if (host_button.getGlobalBounds().contains(sf::Mouse::getPosition(*main_window).x, sf::Mouse::getPosition(*main_window).y)) {
 			if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-				ballSpeed = 3.5f;
-				speed = 3.5f;
+				ballSpeed = 4.0f;
+				speed = 4.0f;
 				hostGameLoop();
 				return;
 			}
@@ -76,6 +76,7 @@ void MainGame::startScreenLoop() {
 		if (join_button.getGlobalBounds().contains(sf::Mouse::getPosition(*main_window).x, sf::Mouse::getPosition(*main_window).y)) {
 			if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
 				textInputWindow();
+				speed = 4.0f;
 				joinGameLoop();
 				return;
 			}
@@ -189,12 +190,11 @@ void MainGame::gameLoop() {
 
 }
 void MainGame::hostGameLoop() {
-	sf::TcpListener listener;
+	sf::UdpSocket client;
 
-	if (listener.listen(5403) != sf::Socket::Done) {
-		std::cout << "No listen Error" << std::endl;
+	if (client.bind(5403) != sf::Socket::Done) {
+		std::cout << "Error" << std::endl;
 	}
-
 
 	sf::Text ip;
 	ip.setFont(myfont);
@@ -202,22 +202,17 @@ void MainGame::hostGameLoop() {
 	ip.setFillColor(sf::Color::Green);
 	ip.setPosition(sf::Vector2f(10.0f, 10.0f));
 
-	
-	sf::TcpSocket client;
-
 	ip.setString(sf::IpAddress::getLocalAddress().toString());
 
 	main_window->clear();
 	main_window->draw(ip);
 	main_window->display();
 
-	if (listener.accept(client) != sf::Socket::Done) {
-		std::cout << "client not accepted" << std::endl;
-	}
-
-	//Send Starting Data to Player 2
-	sendData(client, getHostData());
-
+	receiveData(client); // wait for incoming connection 
+	sendData(client, getHostData()); // Then continue with handshake to update player2 status
+	
+	
+	
 	while (main_window->isOpen())
 	{
 		//Receive player 2 starting position. 
@@ -235,7 +230,7 @@ void MainGame::hostGameLoop() {
 			switch (event.type) {
 			case sf::Event::Closed:
 				main_window->close();
-				client.disconnect();
+				client.unbind();
 				break;
 
 			case sf::Event::KeyPressed:
@@ -299,20 +294,15 @@ void MainGame::hostGameLoop() {
 		sendData(client, getHostData()); //send player1's current state to player2 
 		update();
 	}
-	client.disconnect();
+	client.unbind();
 
 }
 void MainGame::joinGameLoop() {  // Player2's Game Loop 
-	sf::TcpSocket host;
-	std::cout << ip_addr << std::endl;
-	sf::Socket::Status status = host.connect(ip_addr, 5403);
+	sf::UdpSocket host;
 
-	if (status != sf::Socket::Done) {
-		std::cout << "No Connection" << std::endl;
-		showErrorMessage();
-		return;
-	}
-
+	dest_port = 5403;
+	dest = ip_addr;
+	sendData(host, "Hello");
 
 	while (main_window->isOpen()) {
 		//Receive data from player1 
@@ -331,7 +321,7 @@ void MainGame::joinGameLoop() {  // Player2's Game Loop
 			switch (event.type) {
 			case sf::Event::Closed:
 				main_window->close();
-				host.disconnect();
+				host.unbind();
 				break;
 
 			case sf::Event::KeyPressed:
@@ -370,7 +360,7 @@ void MainGame::joinGameLoop() {  // Player2's Game Loop
 		update();
 
 	}
-	host.disconnect();
+	host.unbind();
 
 }
 void MainGame::textInputWindow() {
@@ -492,28 +482,33 @@ float * MainGame::parseData(std::string data) { //Parser for incoming data;
 
 }
 
-float * MainGame::receiveData(sf::TcpSocket& soc) { // Utility Function to Receive data
-	char data[50];
+float * MainGame::receiveData(sf::UdpSocket& soc) { // Utility Function to Receive data
+	char data[35];
 	std::size_t receive;
-	sf::Socket::Status stats = soc.receive(data, 50, receive);
+
+	sf::IpAddress sender;
+	unsigned short port;
+
+	sf::Socket::Status stats = soc.receive(data, 35, receive,sender,port);
 	if (stats != sf::Socket::Done) {
 		std::cout << "Error Receiving " << std::endl;
-		soc.disconnect();
+		soc.unbind();
 		return NULL;
 	}
+	dest = sender;
+	dest_port = port;
 	return parseData(data);
 	
 
 }
 
-void MainGame::sendData(sf::TcpSocket & soc, const std::string & data) { // Utility Function to Send Data; 
+void MainGame::sendData(sf::UdpSocket & soc, const std::string & data) { // Utility Function to Send Data; 
 
-	char sdata[40];
+	char sdata[35];
 	strcpy(sdata, data.c_str());
-
-	if (soc.send(sdata, 40) != sf::Socket::Done) {
+	
+	if (soc.send(sdata, 35,dest,dest_port) != sf::Socket::Done) {
 		std::cout << "Error Sending Data" << std::endl;
-		soc.disconnect();
 	}
 
 }

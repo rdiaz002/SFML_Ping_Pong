@@ -31,7 +31,9 @@ private:
 	bool start_screen = true;
 	const int WIDTH = 1600, HEIGHT = 900;
 	std::string ip_addr;
-
+	sf::IpAddress source;
+	unsigned short source_port, dest_port;
+	sf::IpAddress dest;
 	void gameLoop();
 	void hostGameLoop();
 	void joinGameLoop();
@@ -43,8 +45,8 @@ private:
 	std::string getHostData();
 	std::string getJoinData();
 	float * parseData(std::string data);
-	float * receiveData(sf::TcpSocket & soc);
-	void sendData(sf::TcpSocket & soc, const std::string & data);
+	float * receiveData(sf::UdpSocket & soc);
+	void sendData(sf::UdpSocket & soc, const std::string & data);
 	sf::RectangleShape createRectangle(int posX, int posY, int sizeX, int sizeY);
 	bool checkIntersection(sf::Shape& one, sf::Shape& two);
 };
